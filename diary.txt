@@ -1,0 +1,189 @@
+RED
+
+To begin with we need to make sure we can read surnames:
+
+def testauthor1(self):
+    #test only surnames.
+    (surname,firstnames)=bibtex.extractauthor(self.simpleauthor1)
+    self.assertequal((surname,firstnames),("smith",""))
+    (surname,firstnames)=bibtex.extractauthor(self.simpleauthor2)
+    self.assertequal((surname,firstnames),("jones",""))
+
+
+GREEN
+
+To make this test pass I wrote the following code:
+
+def extractauthor(auth_str: str):
+    return auth_str, ""
+
+RED
+
+The next test needs us to handle last names as well:
+
+def testauthor2(self):
+    #Test simple firstname author.
+    (Surname,First)=bibtex.extractauthor(self.author1)
+    self.assertEqual((Surname,First),("Smith","John"))
+    (Surname,First)=bibtex.extractauthor(self.author2)
+    self.assertEqual((Surname,First),("Jones","Bob"))
+
+AssertionError: Tuples differ: ('JohnSmith', '') != ('Smith', 'John')
+
+RED STILL
+
+
+def extractauthor(auth_str: str):
+    split_str = auth_str.split()
+    if len(split_str) == 1:
+       return  ("", split_str[0])
+    return split_str[0], split_str[1]
+
+
+Noticed that the authors names are lowercase in the tests, changed it:
+First differing element 0:
+'Jones'
+'jones'
+
+    self.simpleauthor1="Smith"
+    self.simpleauthor2="Jones"
+    self.author1="John Smith"
+    self.author2="Bob Jones"
+    self.author3="Justin Kenneth Pearson"
+
+    self.surnamefirst1="Pearson, Justin Kenneth"
+    self.surnamefirst2="Van Hentenryck, Pascal"
+    self.multipleauthors1="Pearson, Justin and Jones, Bob"
+
+    def testauthor1(self):
+        #test only surnames.
+        (surname,firstnames)=bibtex.extractauthor(self.simpleauthor1)
+        self.assertEqual((surname,firstnames),("Smith",""))
+        (surname,firstnames)=bibtex.extractauthor(self.simpleauthor2)
+        self.assertEqual((surname,firstnames),("Jones",""))
+
+RED STILL
+
+Messed up the order of the surname and firstname:
+
+AssertionError: Tuples differ: ('John', 'Smith') != ('Smith', 'John')
+
+First differing element 0:
+'John'
+'Smith'
+
+GREEN: 
+
+
+def extractauthor(auth_str: str):
+    split_str = auth_str.split()
+    if len(split_str) == 1:
+       return (split_str[0], "")
+    return split_str[1], split_str[0]
+
+
+RED:
+
+Now I need to make sure that I can have an author with multiple firstnames:
+
+def testauthor3(self):
+    (Surname,First)=bibtex.extractauthor(self.author3)
+    self.assertEqual((Surname,First),("Pearson","Justin Kenneth"))
+
+STILL RED:
+
+
+def extractauthor(auth_str: str):
+    split_str = auth_str.split()
+    if len(split_str) == 1:
+       return (split_str[0], "")
+    return ' '.join(split_str[:-1]), split_str[0]
+
+A prior test now fails:
+
+AssertionError: Tuples differ: ('John', 'John') != ('Smith', 'John')
+
+Think I got the indexing wrong...
+
+GREEN:
+
+def extractauthor(auth_str: str):
+    split_str = auth_str.split()
+    if len(split_str) == 1:
+       return (split_str[0], "")
+    return split_str[-1],' '.join(split_str[:-1])
+
+Now the first three tests work as intended.
+
+RED: 
+
+Now it is time for a test for entering the surname first:
+
+def testsurnamefirst(self):
+    (Surname,First)=bibtex.extractauthor(self.surnamefirst1)
+    self.assertEqual((Surname,First),("Pearson","Justin Kenneth"))
+    (Surname,First)=bibtex.extractauthor(self.surnamefirst2)
+    self.assertEqual((Surname,First),("Van Hentenryck","Pascal"))
+
+Currently it provides us with this error:
+
+AssertionError: Tuples differ: ('Kenneth', 'Pearson, Justin') != ('Pearson', 'Justin Kenneth')
+
+GREEN:
+
+def extractauthor(auth_str: str):
+    split_str = auth_str.split(" ")
+    if len(split_str) == 1:
+       return (split_str[0], "")
+    elif "," in auth_str:
+        split_str = auth_str.split(",")
+        return split_str[0], split_str[1][1:]
+    else:
+        return split_str[-1],' '.join(split_str[:-1])
+
+This did the trick!
+
+RED:
+
+Testing for multiple authors:
+
+def testmultipleauthors(self):
+    Authors=bibtex.extractauthors(self.multipleauthors1)
+    self.assertEqual(Authors[0],("Pearson","Justin"))
+    self.assertEqual(Authors[1],("Jones","Bob"))
+
+AttributeError: module 'bibtex' has no attribute 'extractauthors'
+
+STILL RED:
+
+def extractauthors(auth_str: str):
+    split_str = auth_str.split(" and ")
+    res = []
+    for author in split_str:
+        res += extractauthor(author)
+    return res
+
+AssertionError: 'Pearson' != ('Pearson', 'Justin')
+
+My intention was to use the extractauthor method on the substrings from split("and")... 
+
+Seems like I got something wrong with the strings being sent to extractauthor
+
+GREEN:
+
+Turns out I just missed hard brackets on the += res line of the code, oops...
+
+def extractauthors(auth_str: str) -> list((str, str)):
+    split_str = auth_str.split(" and ")
+    res = []
+    for author in split_str:
+        res += [extractauthor(author)]
+    return res
+
+Now all tests pass!
+
+
+
+
+
+
